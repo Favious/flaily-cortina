@@ -109,7 +109,7 @@
   <div class="container">
     <object class="logo" data="logo.svg" type="image/svg+xml" aria-label="Flaily"></object>
 
-    <p class="tagline">It's almost here&hellip;</p>
+    <p class="tagline" id="tagline"></p>
 
     <div class="contact">
       <a href="mailto:support@flaily.com">support@flaily.com</a>
@@ -118,6 +118,11 @@
     </div>
   </div>
   <script>
+    const isSpanish = navigator.language.toLowerCase().startsWith('es');
+    document.getElementById('tagline').textContent = isSpanish
+      ? 'Casi está aquí…'
+      : 'It’s almost here…';
+
     const canvas = document.getElementById('clouds');
     const ctx = canvas.getContext('2d');
 
