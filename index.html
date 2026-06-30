@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Flaily — Something is on the way...</title>
+  <title>Flaily — It's almost here…</title>
   <link rel="icon" href="favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;700&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -17,8 +17,8 @@
 
     body {
       background-color: #009AF3;
-      background-image:
-        radial-gradient(ellipse 80% 60% at 50% 45%, #29b1ff 0%, #009AF3 55%, #0077cc 100%);
+      background-image: radial-gradient(ellipse 80% 60% at 50% 45%, #29b1ff 0%, #009AF3 55%, #0077cc 100%);
+
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -38,11 +38,23 @@
       opacity: 0.35;
     }
 
+    #clouds {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+    }
+
     .container {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 16px;
+      gap: 4px;
       animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
 
@@ -55,8 +67,8 @@
 
     .tagline {
       color: rgba(255, 255, 255, 0.8);
-      font-size: 19px;
-      font-weight: 400;
+      font-size: 22px;
+      font-weight: 600;
       letter-spacing: normal;
     }
 
@@ -64,13 +76,13 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-top: 0;
+      margin-top: 20px;
     }
 
     .contact a {
       color: rgba(255, 255, 255, 0.65);
       font-size: 14px;
-      font-weight: 400;
+      font-weight: 600;
       text-decoration: none;
       transition: color 0.15s;
     }
@@ -82,6 +94,10 @@
       font-size: 14px;
     }
 
+    @media (max-width: 768px) {
+      body { background-image: none; }
+    }
+
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(24px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -89,10 +105,11 @@
   </style>
 </head>
 <body>
+  <canvas id="clouds"></canvas>
   <div class="container">
     <object class="logo" data="logo.svg" type="image/svg+xml" aria-label="Flaily"></object>
 
-    <p class="tagline">Something is on the way&hellip;</p>
+    <p class="tagline">It's almost here&hellip;</p>
 
     <div class="contact">
       <a href="mailto:support@flaily.com">support@flaily.com</a>
@@ -100,5 +117,111 @@
       <a href="tel:+59160358075">+591 60358075</a>
     </div>
   </div>
+  <script>
+    const canvas = document.getElementById('clouds');
+    const ctx = canvas.getContext('2d');
+
+    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const GLITCH = '$Z70I8=+?DB7~8ZI0$7ZDB=!#I0Z7$8Z0ID$B7Z=+I$Z0';
+    const CW = 8, CH = 13;
+    const COLS = 36, ROWS = 13;
+
+    function randChar() { return GLITCH[Math.floor(Math.random() * GLITCH.length)]; }
+    function inEllipse(x, y, cx, cy, rx, ry) {
+      return ((x-cx)/rx)**2 + ((y-cy)/ry)**2 <= 1;
+    }
+
+    const SHAPES = [
+      [[0,0,.40,.34],[-.17,-.30,.15,.26],[.03,-.44,.20,.30],[.23,-.28,.14,.23]],
+      [[0,.05,.46,.28],[-.20,-.25,.18,.22],[.18,-.22,.20,.24]],
+      [[0,.10,.28,.36],[0,-.28,.22,.32]],
+      [[0,.05,.44,.32],[-.28,-.20,.16,.22],[-.08,-.38,.17,.26],[.15,-.30,.18,.24],[.32,-.18,.13,.20]],
+      [[0,0,.48,.20],[-.25,-.18,.14,.18],[.22,-.15,.16,.17]],
+      [[0,0,.34,.34],[-.14,-.28,.16,.22],[.14,-.26,.16,.22]],
+    ];
+
+    function buildMask(shapeIdx) {
+      const cx = COLS/2, cy = ROWS*0.65;
+      const ellipses = SHAPES[shapeIdx];
+      return Array.from({length: ROWS}, (_, r) =>
+        Array.from({length: COLS}, (_, c) => {
+          const dx = c-cx, dy = r-cy;
+          return ellipses.some(([ecx,ecy,erx,ery]) =>
+            inEllipse(dx, dy, ecx*COLS, ecy*ROWS, erx*COLS, ery*ROWS)
+          );
+        })
+      );
+    }
+
+    class Cloud {
+      constructor(dist) {
+        this.init(dist);
+      }
+
+      init(dist) {
+        this.shapeIdx = Math.floor(Math.random() * SHAPES.length);
+        this.mask  = buildMask(this.shapeIdx);
+        this.chars = this.mask.map(row => row.map(on => on ? randChar() : ''));
+        // angle spread: mostly horizontal (plane view), compress vertical
+        this.angle = Math.random() * Math.PI * 2;
+        this.dist  = dist ?? 1;
+        this.speed = 0.15 + Math.random() * 0.15;
+        this.maxDist = Math.max(window.innerWidth, window.innerHeight) * 1.1;
+        this.baseOp  = 0.55 + Math.random() * 0.25;
+      }
+
+      update() {
+        // Accelerate as it gets closer — perspective feel
+        this.dist += this.speed * (1 + this.dist / 300);
+        for (let i = 0; i < 7; i++) {
+          const r = Math.floor(Math.random() * ROWS);
+          const c = Math.floor(Math.random() * COLS);
+          if (this.mask[r][c]) this.chars[r][c] = randChar();
+        }
+        return this.dist > this.maxDist;
+      }
+
+      draw() {
+        const t  = this.dist / this.maxDist;          // 0=far, 1=close
+        const sc = 0.06 + t * 2.2;                    // tiny → huge
+        const op = this.baseOp
+                 * Math.min(t * 6, 1)                 // fade in
+                 * (1 - Math.max(0, (t - 0.72) * 3.5)); // fade out
+        if (op <= 0.01) return;
+
+        const w  = COLS * CW * sc, h = ROWS * CH * sc;
+        // Compress vertical spread so clouds feel like they're on the horizon
+        const ox = canvas.width  * 0.5 + Math.cos(this.angle) * this.dist * 0.9;
+        const oy = canvas.height * 0.42 + Math.sin(this.angle) * this.dist * 0.35;
+
+        ctx.save();
+        ctx.globalAlpha = op;
+        ctx.fillStyle   = 'white';
+        ctx.translate(ox - w/2 + COLS*CW*sc/2, oy - h/2 + ROWS*CH*sc/2);
+        ctx.scale(sc, sc);
+        ctx.font = `bold ${CH}px 'Courier New', monospace`;
+        for (let r = 0; r < ROWS; r++)
+          for (let c = 0; c < COLS; c++)
+            if (this.mask[r][c])
+              ctx.fillText(this.chars[r][c], (c - COLS/2)*CW, (r - ROWS/2)*CH);
+        ctx.restore();
+      }
+    }
+
+    // Spread initial clouds across different depths
+    const clouds = Array.from({length: 10}, (_, i) =>
+      new Cloud(i * (Math.max(window.innerWidth, window.innerHeight) * 1.1 / 10))
+    );
+
+    function loop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      clouds.forEach(c => { if (c.update()) c.init(1); c.draw(); });
+      requestAnimationFrame(loop);
+    }
+    loop();
+  </script>
 </body>
 </html>
